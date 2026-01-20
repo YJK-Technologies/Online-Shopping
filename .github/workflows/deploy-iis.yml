@@ -59,7 +59,7 @@ jobs:
       - name: Restart backend
         shell: powershell
         run: |
-          if (pm2 list | Select-String "os-backend") {
+          if (pm2 list | Select-String "Ecommerce") {
             pm2 restart Ecommerce
           } else {
             pm2 start C:\inetpub\wwwroot\E_commerce\server\https.js --name Ecommerce
