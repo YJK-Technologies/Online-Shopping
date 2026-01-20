@@ -1,0 +1,98 @@
+name: OS Auto Deploy (IIS + PM2)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      # -------------------------------------------------
+      # 1️⃣ Checkout source
+      # -------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -------------------------------------------------
+      # 2️⃣ Setup Node
+      # -------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # -------------------------------------------------
+      # 3️⃣ Sync BACKEND code to IIS (FIXED PATH)
+      # -------------------------------------------------
+      - name: Sync backend code to IIS
+        shell: powershell
+        run: |
+          $src = "$env:GITHUB_WORKSPACE\backend"
+          $dest = "C:\inetpub\wwwroot\E_commerce\server"
+
+          if (!(Test-Path $src)) {
+            Write-Error "Backend source folder not found: $src"
+            exit 1
+          }
+
+          robocopy $src $dest /MIR /XD node_modules
+          if ($LASTEXITCODE -le 7) {
+            exit 0
+          } else {
+            exit $LASTEXITCODE
+          }
+
+      # -------------------------------------------------
+      # 4️⃣ Backend npm install
+      # -------------------------------------------------
+      - name: Install backend dependencies
+        shell: powershell
+        run: |
+          npm install --legacy-peer-deps --prefix C:\inetpub\wwwroot\E_commerce\server
+
+      # -------------------------------------------------
+      # 5️⃣ Restart backend via PM2
+      # -------------------------------------------------
+      - name: Restart backend
+        shell: powershell
+        run: |
+          if (pm2 list | Select-String "os-backend") {
+            pm2 restart Ecommerce
+          } else {
+            pm2 start C:\inetpub\wwwroot\E_commerce\server\https.js --name Ecommerce
+          }
+          pm2 save
+
+      # -------------------------------------------------
+      # 6️⃣ Frontend npm install
+      # -------------------------------------------------
+      - name: Install frontend dependencies
+        shell: powershell
+        run: |
+          npm install --legacy-peer-deps
+
+      # -------------------------------------------------
+      # 7️⃣ Build frontend (CI safe)
+      # -------------------------------------------------
+      - name: Build frontend
+        shell: powershell
+        run: |
+          $env:CI="false"
+          $env:GENERATE_SOURCEMAP="false"
+          npm run build
+
+      # -------------------------------------------------
+      # 8️⃣ Deploy frontend build to IIS
+      # -------------------------------------------------
+      - name: Deploy frontend to IIS
+        shell: powershell
+        run: |
+          robocopy build C:\inetpub\wwwroot\E_commerce\build /MIR
+          if ($LASTEXITCODE -le 7) {
+            exit 0
+          } else {
+            exit $LASTEXITCODE
+          }
