@@ -240,7 +240,7 @@ useEffect(() => {
       <ToastContainer />
       <div className="container min-vh-100 d-flex align-items-center justify-content-center">
         <div className="card p-4 shadow" style={{ width: "400px" }}>
-          <h4 className="text-center mb-3">Shop Login</h4>
+          <h4 className="text-center mb-3">Login</h4>
 
           <div className="btn-group w-100 mb-3">
             <button
