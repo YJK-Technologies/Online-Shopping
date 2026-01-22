@@ -11,15 +11,14 @@ jobs:
 
     steps:
       # -------------------------------------------------
-      # 0️⃣ Capture JOB START TIME (IST)
+      # 0️⃣ Capture JOB START TIME (IST - Local Machine)
       # -------------------------------------------------
       - name: Capture Job Start Time (IST)
         shell: powershell
         run: |
-          $utc = Get-Date
-          $ist = $utc.AddHours(5).AddMinutes(30)
+          $ist = Get-Date
           $log = "D:\Action-Runners\os-runner\_diag\job-runtime-IST.log"
-          "START | $(Get-Date $ist -Format 'yyyy-MM-dd HH:mm:ss') | Repo=$env:GITHUB_REPOSITORY | RunId=$env:GITHUB_RUN_ID" | Out-File -Append $log
+          "START | $($ist.ToString('yyyy-MM-dd HH:mm:ss')) | Repo=$env:GITHUB_REPOSITORY | RunId=$env:GITHUB_RUN_ID" | Out-File -Append $log
 
       # -------------------------------------------------
       # 1️⃣ Checkout source
@@ -107,7 +106,6 @@ jobs:
         if: always()
         shell: powershell
         run: |
-          $utc = Get-Date
-          $ist = $utc.AddHours(5).AddMinutes(30)
+          $ist = Get-Date
           $log = "D:\Action-Runners\os-runner\_diag\job-runtime-IST.log"
-          "END   | $(Get-Date $ist -Format 'yyyy-MM-dd HH:mm:ss') | Repo=$env:GITHUB_REPOSITORY | RunId=$env:GITHUB_RUN_ID | Status=${{ job.status }}" | Out-File -Append $log
+          "END   | $($ist.ToString('yyyy-MM-dd HH:mm:ss')) | Repo=$env:GITHUB_REPOSITORY | RunId=$env:GITHUB_RUN_ID | Status=${{ job.status }}" | Out-File -Append $log
