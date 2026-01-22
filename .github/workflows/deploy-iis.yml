@@ -11,6 +11,17 @@ jobs:
 
     steps:
       # -------------------------------------------------
+      # 0️⃣ Capture JOB START TIME (IST)
+      # -------------------------------------------------
+      - name: Capture Job Start Time (IST)
+        shell: powershell
+        run: |
+          $utc = Get-Date
+          $ist = $utc.AddHours(5).AddMinutes(30)
+          $log = "D:\Action-Runners\os-runner\_diag\job-runtime-IST.log"
+          "START | $(Get-Date $ist -Format 'yyyy-MM-dd HH:mm:ss') | Repo=$env:GITHUB_REPOSITORY | RunId=$env:GITHUB_RUN_ID" | Out-File -Append $log
+
+      # -------------------------------------------------
       # 1️⃣ Checkout source
       # -------------------------------------------------
       - name: Checkout repository
@@ -25,7 +36,7 @@ jobs:
           node-version: 20
 
       # -------------------------------------------------
-      # 3️⃣ Sync BACKEND code to IIS (FIXED PATH)
+      # 3️⃣ Sync BACKEND code to IIS
       # -------------------------------------------------
       - name: Sync backend code to IIS
         shell: powershell
@@ -39,11 +50,7 @@ jobs:
           }
 
           robocopy $src $dest /MIR /XD node_modules
-          if ($LASTEXITCODE -le 7) {
-            exit 0
-          } else {
-            exit $LASTEXITCODE
-          }
+          if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
 
       # -------------------------------------------------
       # 4️⃣ Backend npm install
@@ -75,7 +82,7 @@ jobs:
           npm install --legacy-peer-deps
 
       # -------------------------------------------------
-      # 7️⃣ Build frontend (CI safe)
+      # 7️⃣ Build frontend
       # -------------------------------------------------
       - name: Build frontend
         shell: powershell
@@ -85,14 +92,22 @@ jobs:
           npm run build
 
       # -------------------------------------------------
-      # 8️⃣ Deploy frontend build to IIS
+      # 8️⃣ Deploy frontend to IIS
       # -------------------------------------------------
       - name: Deploy frontend to IIS
         shell: powershell
         run: |
           robocopy build C:\inetpub\wwwroot\E_commerce\build /MIR /XF web.config
-          if ($LASTEXITCODE -le 7) {
-            exit 0
-          } else {
-            exit $LASTEXITCODE
-          }
+          if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
+
+      # -------------------------------------------------
+      # 9️⃣ Capture JOB END TIME (IST)
+      # -------------------------------------------------
+      - name: Capture Job End Time (IST)
+        if: always()
+        shell: powershell
+        run: |
+          $utc = Get-Date
+          $ist = $utc.AddHours(5).AddMinutes(30)
+          $log = "D:\Action-Runners\os-runner\_diag\job-runtime-IST.log"
+          "END   | $(Get-Date $ist -Format 'yyyy-MM-dd HH:mm:ss') | Repo=$env:GITHUB_REPOSITORY | RunId=$env:GITHUB_RUN_ID | Status=${{ job.status }}" | Out-File -Append $log
