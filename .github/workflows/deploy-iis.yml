@@ -62,15 +62,40 @@ jobs:
       # -------------------------------------------------
       # 5️⃣ Restart backend via PM2
       # -------------------------------------------------
-      - name: Restart backend
+      # - name: Restart backend
+      #   shell: powershell
+      #   run: |
+      #     if (pm2 list | Select-String "Ecommerce") {
+      #       pm2 restart Ecommerce
+      #     } else {
+      #       pm2 start C:\inetpub\wwwroot\E_commerce\server\https.js --name Ecommerce
+      #     }
+      #     pm2 save
+
+      - name: Restart backend (NSSM)
         shell: powershell
         run: |
-          if (pm2 list | Select-String "Ecommerce") {
-            pm2 restart Ecommerce
-          } else {
-            pm2 start C:\inetpub\wwwroot\E_commerce\server\https.js --name Ecommerce
+          $serviceName = "Ecommerce"
+          $nssm = "C:\Windows\System32\nssm.exe"
+          $node = "C:\Program Files\nodejs\node.exe"
+          $app = "C:\inetpub\wwwroot\E_commerce\server\https.js"
+          $appDir = "C:\inetpub\wwwroot\E_commerce\server"
+
+          if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+              Write-Host "Service exists. Restarting..."
+              & $nssm restart $serviceName
           }
-          pm2 save
+          else {
+              Write-Host "Service not found. Creating NSSM service..."
+
+              & $nssm install $serviceName $node $app
+              & $nssm set $serviceName AppDirectory $appDir
+              & $nssm set $serviceName Start SERVICE_AUTO_START
+              & $nssm set $serviceName AppStdout "$appDir\nssm-out.log"
+              & $nssm set $serviceName AppStderr "$appDir\nssm-err.log"
+
+              & $nssm start $serviceName
+          }
 
       # -------------------------------------------------
       # 6️⃣ Frontend npm install
