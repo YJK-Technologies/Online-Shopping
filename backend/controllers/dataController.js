@@ -73,7 +73,7 @@ const VerifyCustomer = async (req, res) => {
       .request()
       .input("mode", sql.NVarChar, "VC")
       .input("customer_email_id", sql.NVarChar, customer_email_id)
-      .query(`EXEC sp_customer_details_info_test 'VC','','','','','','','','','','','','',
+      .query(`EXEC sp_customer_details_info_online_shopping 'VC','','','','','','','','','','','','',
       '','','','',@customer_email_id,0,'','','',NULL,'','','',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`);
 
     if (result.recordset.length > 0) {
@@ -246,7 +246,7 @@ const addCustomerDetData = async (req, res) => {
       .input("default_customer", sql.NVarChar, default_customer)
       .input("created_by", sql.NVarChar, created_by)
       .query(
-        `EXEC sp_customer_details_info_Test @mode,@customer_code,@company_code,@customer_name, '', '', '', @customer_addr_1, @customer_addr_2, @customer_addr_3, @customer_addr_4,@customer_area,
+        `EXEC sp_customer_details_info_online_shopping @mode,@customer_code,@company_code,@customer_name, '', '', '', @customer_addr_1, @customer_addr_2, @customer_addr_3, @customer_addr_4,@customer_area,
         @customer_state, @customer_country, @customer_office_no, @customer_resi_no, @customer_mobile_no,@customer_email_id, 
          @customer_credit_limit,@customer_salesman_code,@contact_person,@office_type,@default_customer,'',@created_by,'',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`
       );
