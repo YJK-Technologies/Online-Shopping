@@ -1,0 +1,136 @@
+name: OS Auto Deploy (IIS + PM2)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      # -------------------------------------------------
+      # 0️⃣ Capture JOB START TIME (IST - Local Machine)
+      # -------------------------------------------------
+      - name: Capture Job Start Time (IST)
+        shell: powershell
+        run: |
+          $ist = Get-Date
+          $log = "D:\Action-Runners\os-runner\_diag\job-runtime-IST.log"
+          "START | $($ist.ToString('yyyy-MM-dd HH:mm:ss')) | Repo=$env:GITHUB_REPOSITORY | RunId=$env:GITHUB_RUN_ID" | Out-File -Append $log
+
+      # -------------------------------------------------
+      # 1️⃣ Checkout source
+      # -------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -------------------------------------------------
+      # 2️⃣ Setup Node
+      # -------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # -------------------------------------------------
+      # 3️⃣ Sync BACKEND code to IIS
+      # -------------------------------------------------
+      - name: Sync backend code to IIS
+        shell: powershell
+        run: |
+          $src = "$env:GITHUB_WORKSPACE\backend"
+          $dest = "C:\inetpub\wwwroot\E_commerce\server"
+
+          if (!(Test-Path $src)) {
+            Write-Error "Backend source folder not found: $src"
+            exit 1
+          }
+
+          robocopy $src $dest /MIR /XD node_modules /XF .env
+          if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
+
+      # -------------------------------------------------
+      # 4️⃣ Backend npm install
+      # -------------------------------------------------
+      - name: Install backend dependencies
+        shell: powershell
+        run: |
+          npm install --legacy-peer-deps --prefix C:\inetpub\wwwroot\E_commerce\server
+
+      # -------------------------------------------------
+      # 5️⃣ Restart backend via PM2
+      # -------------------------------------------------
+      # - name: Restart backend
+      #   shell: powershell
+      #   run: |
+      #     if (pm2 list | Select-String "Ecommerce") {
+      #       pm2 restart Ecommerce
+      #     } else {
+      #       pm2 start C:\inetpub\wwwroot\E_commerce\server\https.js --name Ecommerce
+      #     }
+      #     pm2 save
+
+      - name: Restart backend (NSSM)
+        shell: powershell
+        run: |
+          $serviceName = "Ecommerce"
+          $nssm = "C:\Windows\System32\nssm.exe"
+          $node = "C:\Program Files\nodejs\node.exe"
+          $app = "C:\inetpub\wwwroot\E_commerce\server\https.js"
+          $appDir = "C:\inetpub\wwwroot\E_commerce\server"
+
+          if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+              Write-Host "Service exists. Restarting..."
+              & $nssm restart $serviceName
+          }
+          else {
+              Write-Host "Service not found. Creating NSSM service..."
+
+              & $nssm install $serviceName $node $app
+              & $nssm set $serviceName AppDirectory $appDir
+              & $nssm set $serviceName Start SERVICE_AUTO_START
+              & $nssm set $serviceName AppStdout "$appDir\nssm-out.log"
+              & $nssm set $serviceName AppStderr "$appDir\nssm-err.log"
+
+              & $nssm start $serviceName
+          }
+
+      # -------------------------------------------------
+      # 6️⃣ Frontend npm install
+      # -------------------------------------------------
+      - name: Install frontend dependencies
+        shell: powershell
+        run: |
+          npm install --legacy-peer-deps
+
+      # -------------------------------------------------
+      # 7️⃣ Build frontend
+      # -------------------------------------------------
+      - name: Build frontend
+        shell: powershell
+        run: |
+          $env:CI="false"
+          $env:GENERATE_SOURCEMAP="false"
+          npm run build
+
+      # -------------------------------------------------
+      # 8️⃣ Deploy frontend to IIS
+      # -------------------------------------------------
+      - name: Deploy frontend to IIS
+        shell: powershell
+        run: |
+          robocopy build C:\inetpub\wwwroot\E_commerce\build /MIR /XF web.config
+          if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
+
+      # -------------------------------------------------
+      # 9️⃣ Capture JOB END TIME (IST)
+      # -------------------------------------------------
+      - name: Capture Job End Time (IST)
+        if: always()
+        shell: powershell
+        run: |
+          $ist = Get-Date
+          $log = "D:\Action-Runners\os-runner\_diag\job-runtime-IST.log"
+          "END   | $($ist.ToString('yyyy-MM-dd HH:mm:ss')) | Repo=$env:GITHUB_REPOSITORY | RunId=$env:GITHUB_RUN_ID | Status=${{ job.status }}" | Out-File -Append $log
